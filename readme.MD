@@ -300,3 +300,5 @@ Copyright © 2026 VeloCity Team
 ---
 
 **Need Help?** Check [`PORTS_AND_SERVICES.md`](PORTS_AND_SERVICES.md) for quick reference or [`../docs/PORT_ALLOCATION.md`](../docs/PORT_ALLOCATION.md) for detailed documentation.
+
+## By Md Rizabul
