@@ -295,7 +295,7 @@ backend/
 
 ## 📄 License
 
-Copyright © 2026 VeloCity Team
+Copyright © 2026 VeloCity 
 
 ---
 
