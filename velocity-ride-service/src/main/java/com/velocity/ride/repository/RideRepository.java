@@ -1,8 +1,9 @@
 package com.velocity.ride.repository;
 
-import com.velocity.core.enums.RideStatus;
-import com.velocity.core.enums.VehicleType;
-import com.velocity.ride.model.entity.Ride;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,9 +11,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
+import com.velocity.core.enums.RideStatus;
+import com.velocity.core.enums.VehicleType;
+import com.velocity.ride.model.entity.Ride;
 
 /**
  * Repository interface for Ride entity.
@@ -126,4 +127,20 @@ public interface RideRepository extends JpaRepository<Ride, Long> {
      */
     @Query("SELECT r FROM Ride r WHERE r.status = 'REQUESTED' AND r.requestedAt < :cutoffTime")
     List<Ride> findRidesForAutoCancellation(@Param("cutoffTime") LocalDateTime cutoffTime);
+    
+    /**
+     * Check if user has any active rides
+     * @param userId User ID
+     * @param statuses List of ride statuses to check
+     * @return true if user has active ride
+     */
+    boolean existsByUserIdAndStatusIn(Long userId, List<RideStatus> statuses);
+    
+    /**
+     * Find rides by user ordered by requested time descending
+     * @param userId User ID
+     * @param pageable Pagination parameters
+     * @return Page of rides
+     */
+    Page<Ride> findByUserIdOrderByRequestedAtDesc(Long userId, Pageable pageable);
 }

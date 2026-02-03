@@ -3,52 +3,117 @@ server:
 
 spring:
   application:
-    name: api-gateway
+    name: velocity-gateway
   
   cloud:
     gateway:
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:5173"
+              - "http://localhost:3000"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+            maxAge: 3600
+      
       routes:
+        # User Service Routes
         - id: user-service
           uri: http://localhost:8081
           predicates:
-            - Path=/api/v1/users/**
+            - Path=/api/users/**
           filters:
             - name: CircuitBreaker
               args:
                 name: userServiceCircuitBreaker
                 fallbackUri: forward:/fallback/users
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                redis-rate-limiter.requestedTokens: 1
         
+        # Driver Service Routes
         - id: driver-service
           uri: http://localhost:8082
           predicates:
-            - Path=/api/v1/drivers/**
+            - Path=/api/drivers/**
           filters:
             - name: CircuitBreaker
               args:
                 name: driverServiceCircuitBreaker
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
+                redis-rate-limiter.requestedTokens: 1
         
+        # Ride Service Routes
         - id: ride-service
           uri: http://localhost:8083
           predicates:
-            - Path=/api/v1/rides/**
+            - Path=/api/rides/**
           filters:
             - name: CircuitBreaker
               args:
                 name: rideServiceCircuitBreaker
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 30
+                redis-rate-limiter.burstCapacity: 60
+                redis-rate-limiter.requestedTokens: 1
         
+        # Payment Service Routes
         - id: payment-service
           uri: http://localhost:8084
           predicates:
-            - Path=/api/v1/payments/**,/api/v1/wallets/**
+            - Path=/api/wallets/**,/api/payments/**
           filters:
             - name: CircuitBreaker
               args:
                 name: paymentServiceCircuitBreaker
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 15
+                redis-rate-limiter.burstCapacity: 30
+                redis-rate-limiter.requestedTokens: 1
+        
+        # Notification Service Routes
+        - id: notification-service
+          uri: http://localhost:8085
+          predicates:
+            - Path=/api/notifications/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: notificationServiceCircuitBreaker
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                redis-rate-limiter.requestedTokens: 1
+      
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
   
   data:
     redis:
       host: localhost
       port: 6379
+      timeout: 2000ms
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:VeloCity2026SecretKeyForJWTTokenGenerationAndValidation}
+  expiration: 900000  # 15 minutes
 
 management:
   endpoints:

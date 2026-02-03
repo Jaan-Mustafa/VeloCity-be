@@ -1,15 +1,16 @@
 package com.velocity.driver.repository;
 
-import com.velocity.core.enums.VehicleType;
-import com.velocity.driver.model.entity.Driver;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Optional;
+import com.velocity.core.enums.VehicleType;
+import com.velocity.driver.model.entity.Driver;
 
 /**
  * Repository interface for Driver entity.
@@ -29,6 +30,13 @@ public interface DriverRepository extends JpaRepository<Driver, Long> {
      * @return Optional containing driver if found
      */
     Optional<Driver> findByUserId(Long userId);
+    
+    /**
+     * Check if user is already registered as driver
+     * @param userId User ID
+     * @return true if exists
+     */
+    boolean existsByUserId(Long userId);
     
     /**
      * Find driver by license number

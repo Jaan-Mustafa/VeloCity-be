@@ -101,13 +101,15 @@ logging:
     max-size: 10MB
     max-history: 30
 
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:VeloCity2026SecretKeyForJWTTokenGenerationAndValidationPleaseChangeInProduction}
+  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRY:900000}
+  refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRY:604800000}
+  issuer: VeloCity
+
 # Application specific configuration
 app:
-  jwt:
-    secret: ${JWT_SECRET:your-secret-key-change-this-in-production-min-256-bits}
-    access-token-expiry: ${JWT_ACCESS_TOKEN_EXPIRY:900000}
-    refresh-token-expiry: ${JWT_REFRESH_TOKEN_EXPIRY:604800000}
-  
   security:
     password-min-length: 8
     max-login-attempts: 5

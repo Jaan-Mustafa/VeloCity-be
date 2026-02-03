@@ -12,7 +12,9 @@ public enum NotificationType {
     EMAIL("Email", true, "Email notification"),
     SMS("SMS", true, "SMS notification"),
     PUSH("Push Notification", true, "Mobile push notification"),
-    IN_APP("In-App", false, "In-app notification");
+    IN_APP("In-App", false, "In-app notification"),
+    RIDE_REQUEST("Ride Request", false, "Ride request notification"),
+    RIDE_UPDATE("Ride Update", false, "Ride status update notification");
     
     private final String displayName;
     private final boolean requiresExternalService;

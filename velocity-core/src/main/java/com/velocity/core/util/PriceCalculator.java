@@ -298,6 +298,19 @@ public final class PriceCalculator {
     public static BigDecimal estimateFare(VehicleType vehicleType, double distanceKm, long durationMinutes) {
         return vehicleType.estimateFare(distanceKm);
     }
+    
+    /**
+     * Calculates the fare for a ride (simplified version for ride service).
+     *
+     * @param distanceKm the distance in kilometers
+     * @param durationMinutes the duration in minutes
+     * @param vehicleType the type of vehicle
+     * @return the calculated fare
+     * @throws IllegalArgumentException if any parameter is invalid
+     */
+    public static BigDecimal calculateFare(double distanceKm, int durationMinutes, VehicleType vehicleType) {
+        return calculateBaseFare(vehicleType, distanceKm, durationMinutes);
+    }
 
     /**
      * Gets the cancellation fee for a rider.

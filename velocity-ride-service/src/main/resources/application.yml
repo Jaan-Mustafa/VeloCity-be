@@ -34,8 +34,10 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
+    baseline-version: 0
     locations: classpath:db/migration
     validate-on-migrate: true
+    table: flyway_schema_history_ride
 
   data:
     redis:
@@ -108,3 +110,8 @@ app:
     auto-cancel-minutes: 5
     max-drivers-to-notify: 3
     search-radius-km: 5
+
+# External service URLs
+notification:
+  service:
+    url: ${NOTIFICATION_SERVICE_URL:http://localhost:8085}

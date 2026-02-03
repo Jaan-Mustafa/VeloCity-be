@@ -1,12 +1,17 @@
 package com.velocity.driver.model.entity;
 
-import jakarta.persistence.*;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 /**
  * DriverLocation entity for tracking real-time driver locations.
@@ -27,11 +32,6 @@ public class DriverLocation {
     @Id
     @Column(name = "driver_id")
     private Long driverId;
-    
-    @OneToOne
-    @MapsId
-    @JoinColumn(name = "driver_id")
-    private Driver driver;
     
     @Column(nullable = false, precision = 10, scale = 8)
     private BigDecimal latitude;

@@ -3,6 +3,7 @@ package com.velocity.user.model.entity;
 import com.velocity.core.enums.UserRole;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
@@ -14,7 +15,7 @@ import java.time.LocalDateTime;
 /**
  * User entity representing a user account in the VeloCity system.
  * Can be a RIDER, DRIVER, or ADMIN.
- * 
+ *
  * Following rules.md:
  * - Uses @Data for getters/setters
  * - Uses @NoArgsConstructor and @AllArgsConstructor
@@ -24,6 +25,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "users")
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)

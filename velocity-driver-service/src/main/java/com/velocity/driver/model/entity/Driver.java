@@ -3,6 +3,7 @@ package com.velocity.driver.model.entity;
 import com.velocity.core.enums.VehicleType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
@@ -26,6 +27,7 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 @EntityListeners(AuditingEntityListener.class)
 public class Driver {
     
