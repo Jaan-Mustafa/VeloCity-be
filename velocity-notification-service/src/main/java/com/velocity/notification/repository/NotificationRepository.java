@@ -60,11 +60,11 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     /**
      * Find recent notifications for user
      * @param userId User ID
-     * @param limit Number of notifications to return
+     * @param pageable Pagination parameters (use PageRequest.of(0, limit) for limiting results)
      * @return List of recent notifications
      */
     @Query("SELECT n FROM Notification n WHERE n.userId = :userId ORDER BY n.createdAt DESC")
-    List<Notification> findRecentNotifications(@Param("userId") Long userId, @Param("limit") int limit);
+    List<Notification> findRecentNotifications(@Param("userId") Long userId, Pageable pageable);
     
     /**
      * Mark all notifications as read for user
