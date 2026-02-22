@@ -98,9 +98,17 @@ public class LocationService {
         Point center = new Point(longitude, latitude);
         Distance radius = new Distance(radiusKm, Metrics.KILOMETERS);
         Circle area = new Circle(center, radius);
-        
-        GeoResults<RedisGeoCommands.GeoLocation<Object>> results = 
-                redisTemplate.opsForGeo().radius(DRIVER_LOCATION_KEY, area);
+
+        // Include coordinates and distance in results
+        RedisGeoCommands.GeoRadiusCommandArgs args = RedisGeoCommands.GeoRadiusCommandArgs
+                .newGeoRadiusArgs()
+                .includeCoordinates()
+                .includeDistance()
+                .sortAscending()
+                .limit(limit);
+
+        GeoResults<RedisGeoCommands.GeoLocation<Object>> results =
+                redisTemplate.opsForGeo().radius(DRIVER_LOCATION_KEY, area, args);
         
         if (results == null || results.getContent().isEmpty()) {
             log.info("No nearby drivers found in Redis");
@@ -109,17 +117,18 @@ public class LocationService {
         
         // Extract driver IDs and distances
         List<NearbyDriverResponse> nearbyDrivers = results.getContent().stream()
+                .filter(result -> result.getContent().getPoint() != null) // Skip if no coordinates
                 .map(result -> {
                     Long driverId = Long.parseLong(result.getContent().getName().toString());
                     Double distanceKm = result.getDistance().getValue();
                     Point point = result.getContent().getPoint();
-                    
+
                     // Fetch driver details from database
                     return driverRepository.findById(driverId)
                             .filter(Driver::getIsAvailable)
                             .filter(driver -> vehicleType == null || driver.getVehicleType().equals(vehicleType))
                             .map(driver -> driverMapper.toNearbyDriverResponse(
-                                    driver, 
+                                    driver,
                                     point.getY(), // latitude
                                     point.getX(), // longitude
                                     distanceKm
@@ -127,7 +136,6 @@ public class LocationService {
                             .orElse(null);
                 })
                 .filter(response -> response != null)
-                .limit(limit)
                 .collect(Collectors.toList());
         
         log.info("Found {} nearby drivers", nearbyDrivers.size());

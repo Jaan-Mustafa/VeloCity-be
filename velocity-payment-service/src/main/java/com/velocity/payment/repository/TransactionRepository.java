@@ -100,9 +100,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     /**
      * Find recent transactions
      * @param walletId Wallet ID
-     * @param limit Number of transactions to return
+     * @param pageable Pagination parameters (use PageRequest.of(0, limit) for limiting results)
      * @return List of recent transactions
      */
     @Query("SELECT t FROM Transaction t WHERE t.walletId = :walletId ORDER BY t.createdAt DESC")
-    List<Transaction> findRecentTransactions(@Param("walletId") Long walletId, @Param("limit") int limit);
+    List<Transaction> findRecentTransactions(@Param("walletId") Long walletId, Pageable pageable);
 }
