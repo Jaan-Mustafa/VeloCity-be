@@ -50,12 +50,13 @@ spring:
             - name: CircuitBreaker
               args:
                 name: driverServiceCircuitBreaker
+                fallbackUri: forward:/fallback/drivers
             - name: RequestRateLimiter
               args:
                 redis-rate-limiter.replenishRate: 20
                 redis-rate-limiter.burstCapacity: 40
                 redis-rate-limiter.requestedTokens: 1
-        
+
         # Ride Service Routes
         - id: ride-service
           uri: http://localhost:8083
@@ -65,12 +66,13 @@ spring:
             - name: CircuitBreaker
               args:
                 name: rideServiceCircuitBreaker
+                fallbackUri: forward:/fallback/rides
             - name: RequestRateLimiter
               args:
                 redis-rate-limiter.replenishRate: 30
                 redis-rate-limiter.burstCapacity: 60
                 redis-rate-limiter.requestedTokens: 1
-        
+
         # Payment Service Routes
         - id: payment-service
           uri: http://localhost:8084
@@ -80,12 +82,13 @@ spring:
             - name: CircuitBreaker
               args:
                 name: paymentServiceCircuitBreaker
+                fallbackUri: forward:/fallback/payments
             - name: RequestRateLimiter
               args:
                 redis-rate-limiter.replenishRate: 15
                 redis-rate-limiter.burstCapacity: 30
                 redis-rate-limiter.requestedTokens: 1
-        
+
         # Notification Service Routes
         - id: notification-service
           uri: http://localhost:8085
@@ -95,6 +98,7 @@ spring:
             - name: CircuitBreaker
               args:
                 name: notificationServiceCircuitBreaker
+                fallbackUri: forward:/fallback/notifications
             - name: RequestRateLimiter
               args:
                 redis-rate-limiter.replenishRate: 10
@@ -119,17 +123,71 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus,gateway
+        include: health,info,metrics,prometheus,gateway,circuitbreakers,circuitbreakerevents
   endpoint:
     health:
       show-details: always
+  health:
+    circuitbreakers:
+      enabled: true
   metrics:
     export:
       prometheus:
         enabled: true
+    tags:
+      application: ${spring.application.name}
 
 logging:
   level:
     root: INFO
     com.velocity: DEBUG
     org.springframework.cloud.gateway: DEBUG
+    io.github.resilience4j: DEBUG
+
+# Resilience4j Circuit Breaker Configuration
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 50
+        slowCallRateThreshold: 80
+        slowCallDurationThreshold: 3s
+        recordExceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - org.springframework.web.client.HttpServerErrorException
+    instances:
+      userServiceCircuitBreaker:
+        baseConfig: default
+      driverServiceCircuitBreaker:
+        baseConfig: default
+      rideServiceCircuitBreaker:
+        baseConfig: default
+      paymentServiceCircuitBreaker:
+        baseConfig: default
+        failureRateThreshold: 40  # More sensitive for payments
+      notificationServiceCircuitBreaker:
+        baseConfig: default
+        failureRateThreshold: 60  # Less sensitive for notifications
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: 5s
+        cancelRunningFuture: true
+    instances:
+      userServiceCircuitBreaker:
+        baseConfig: default
+      driverServiceCircuitBreaker:
+        baseConfig: default
+      rideServiceCircuitBreaker:
+        baseConfig: default
+      paymentServiceCircuitBreaker:
+        baseConfig: default
+        timeoutDuration: 10s  # More time for payment processing
+      notificationServiceCircuitBreaker:
+        baseConfig: default

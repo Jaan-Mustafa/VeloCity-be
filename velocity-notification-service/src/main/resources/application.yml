@@ -120,5 +120,5 @@ app:
   notification:
     max-retry-attempts: 3
     retry-delay-seconds: 5
-    from-email: ${MAIL_FROM:noreply@velocity.com}
+    from-email: ${MAIL_FROM:md.rizabul9891@gmail.com}
     cleanup-days: 30
