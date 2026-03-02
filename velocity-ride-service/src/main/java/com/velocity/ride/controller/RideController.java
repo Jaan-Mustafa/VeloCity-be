@@ -102,18 +102,31 @@ public class RideController {
     }
     
     /**
-     * Get user's active ride
+     * Get user's active ride (as rider)
      * GET /api/rides/active
      */
     @GetMapping("/active")
     public ResponseEntity<ApiResponse<RideResponseDto>> getActiveRide(
             @RequestHeader("X-User-Id") Long userId) {
-        
+
         log.info("Fetching active ride for user {}", userId);
         RideResponseDto ride = rideService.getUserActiveRide(userId);
         return ResponseEntity.ok(ApiResponse.success(ride));
     }
-    
+
+    /**
+     * Get driver's active ride
+     * GET /api/rides/driver/active
+     */
+    @GetMapping("/driver/active")
+    public ResponseEntity<ApiResponse<RideResponseDto>> getDriverActiveRide(
+            @RequestHeader("X-User-Id") Long driverId) {
+
+        log.info("Fetching active ride for driver {}", driverId);
+        RideResponseDto ride = rideService.getDriverActiveRide(driverId);
+        return ResponseEntity.ok(ApiResponse.success(ride));
+    }
+
     /**
      * Cancel a ride
      * POST /api/rides/{id}/cancel

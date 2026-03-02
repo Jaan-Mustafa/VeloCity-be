@@ -70,5 +70,9 @@ public class RideResponseDto {
         private String vehicleModel;
         private String vehicleNumber;
         private String profileImageUrl;
+
+        // Driver's current location (for real-time tracking)
+        private Double latitude;
+        private Double longitude;
     }
 }

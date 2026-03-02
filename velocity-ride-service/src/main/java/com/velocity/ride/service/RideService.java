@@ -181,21 +181,34 @@ public class RideService {
     }
     
     /**
-     * Get user's active ride
+     * Get user's active ride (as rider)
      */
     public RideResponseDto getUserActiveRide(Long userId) {
         Ride ride = rideRepository.findActiveRideByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("No active ride found"));
-        
+
         RideResponseDto dto = rideMapper.toDto(ride);
-        
+
         if (ride.getDriverId() != null) {
             dto.setDriver(fetchDriverInfo(ride.getDriverId()));
         }
-        
+
         return dto;
     }
-    
+
+    /**
+     * Get driver's active ride
+     */
+    public RideResponseDto getDriverActiveRide(Long driverId) {
+        Ride ride = rideRepository.findActiveRideByDriverId(driverId)
+                .orElseThrow(() -> new ResourceNotFoundException("No active ride found"));
+
+        RideResponseDto dto = rideMapper.toDto(ride);
+        dto.setDriver(fetchDriverInfo(ride.getDriverId()));
+
+        return dto;
+    }
+
     /**
      * Cancel ride
      */
@@ -244,28 +257,28 @@ public class RideService {
     public RideResponseDto acceptRide(Long rideId, Long driverId) {
         Ride ride = rideRepository.findById(rideId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ride not found"));
-        
+
         // Verify ride is in REQUESTED status
         if (ride.getStatus() != RideStatus.REQUESTED) {
             throw new BusinessException("Ride is not available for acceptance");
         }
-        
+
         // Check if driver is already assigned
         if (ride.getDriverId() != null) {
             throw new BusinessException("Ride has already been accepted by another driver");
         }
-        
+
         // Assign driver and update status
         ride.setDriverId(driverId);
         ride.setStatus(RideStatus.ACCEPTED);
         ride.setAcceptedAt(LocalDateTime.now());
-        
+
         ride = rideRepository.save(ride);
         log.info("Ride {} accepted by driver {}", rideId, driverId);
-        
+
         // Send notification to user
         notificationService.notifyRideStatusChange(ride, RideStatus.ACCEPTED);
-        
+
         return rideMapper.toDto(ride);
     }
     
@@ -276,7 +289,7 @@ public class RideService {
     public RideResponseDto markDriverArrived(Long rideId, Long driverId) {
         Ride ride = rideRepository.findById(rideId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ride not found"));
-        
+
         // Verify driver ownership
         if (!ride.getDriverId().equals(driverId)) {
             throw new BusinessException("You are not assigned to this ride");
@@ -307,27 +320,27 @@ public class RideService {
     public RideResponseDto startRide(Long rideId, Long driverId) {
         Ride ride = rideRepository.findById(rideId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ride not found"));
-        
+
         // Verify driver ownership
         if (!ride.getDriverId().equals(driverId)) {
             throw new BusinessException("You are not assigned to this ride");
         }
-        
+
         // Verify ride is in ARRIVED status
         if (ride.getStatus() != RideStatus.ARRIVED) {
             throw new BusinessException("Cannot start ride in " + ride.getStatus() + " status");
         }
-        
+
         // Update status to IN_PROGRESS
         ride.setStatus(RideStatus.IN_PROGRESS);
         ride.setStartedAt(LocalDateTime.now());
-        
+
         ride = rideRepository.save(ride);
         log.info("Ride {} started by driver {}", rideId, driverId);
-        
+
         // Send notification to user
         notificationService.notifyRideStatusChange(ride, RideStatus.IN_PROGRESS);
-        
+
         return rideMapper.toDto(ride);
     }
     
@@ -338,12 +351,12 @@ public class RideService {
     public RideResponseDto completeRide(Long rideId, Long driverId) {
         Ride ride = rideRepository.findById(rideId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ride not found"));
-        
+
         // Verify driver ownership
         if (!ride.getDriverId().equals(driverId)) {
             throw new BusinessException("You are not assigned to this ride");
         }
-        
+
         // Verify ride is in IN_PROGRESS status
         if (ride.getStatus() != RideStatus.IN_PROGRESS) {
             throw new BusinessException("Cannot complete ride in " + ride.getStatus() + " status");
@@ -457,8 +470,34 @@ public class RideService {
     private RideResponseDto.DriverInfoDto fetchDriverInfo(Long driverId) {
         try {
             String url = DRIVER_SERVICE_URL + "/" + driverId;
-            // TODO: Implement actual REST call to driver service
-            // For now, return null - will be implemented when driver service is ready
+            @SuppressWarnings("unchecked")
+            java.util.Map<String, Object> response = restTemplate.getForObject(url, java.util.Map.class);
+
+            if (response != null && response.get("data") != null) {
+                @SuppressWarnings("unchecked")
+                java.util.Map<String, Object> data = (java.util.Map<String, Object>) response.get("data");
+
+                return RideResponseDto.DriverInfoDto.builder()
+                        .id(Long.valueOf(data.get("id").toString()))
+                        .name("Driver " + driverId) // Name from user service would be needed
+                        .phone(data.get("userId") != null ? "N/A" : "N/A") // Phone from user service
+                        .rating(data.get("rating") != null
+                                ? new BigDecimal(data.get("rating").toString())
+                                : BigDecimal.valueOf(4.5))
+                        .vehicleModel(data.get("vehicleModel") != null
+                                ? data.get("vehicleModel").toString()
+                                : "Unknown")
+                        .vehicleNumber(data.get("vehicleNumber") != null
+                                ? data.get("vehicleNumber").toString()
+                                : "Unknown")
+                        .latitude(data.get("latitude") != null
+                                ? Double.valueOf(data.get("latitude").toString())
+                                : null)
+                        .longitude(data.get("longitude") != null
+                                ? Double.valueOf(data.get("longitude").toString())
+                                : null)
+                        .build();
+            }
             return null;
         } catch (Exception e) {
             log.warn("Failed to fetch driver info for driver {}", driverId, e);
