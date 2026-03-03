@@ -145,6 +145,14 @@ public interface RideRepository extends JpaRepository<Ride, Long> {
     Page<Ride> findByUserIdOrderByRequestedAtDesc(Long userId, Pageable pageable);
 
     /**
+     * Find rides by driver ordered by requested time descending
+     * @param driverId Driver ID
+     * @param pageable Pagination parameters
+     * @return Page of rides
+     */
+    Page<Ride> findByDriverIdOrderByRequestedAtDesc(Long driverId, Pageable pageable);
+
+    /**
      * Find pending (REQUESTED) rides by vehicle type that haven't been accepted yet
      * @param vehicleType Vehicle type to filter
      * @param status Ride status (REQUESTED)

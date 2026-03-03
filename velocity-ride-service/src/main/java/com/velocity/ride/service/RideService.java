@@ -181,7 +181,15 @@ public class RideService {
         Page<Ride> rides = rideRepository.findByUserIdOrderByRequestedAtDesc(userId, pageable);
         return rides.map(rideMapper::toDto);
     }
-    
+
+    /**
+     * Get driver's ride history
+     */
+    public Page<RideResponseDto> getDriverRideHistory(Long driverId, Pageable pageable) {
+        Page<Ride> rides = rideRepository.findByDriverIdOrderByRequestedAtDesc(driverId, pageable);
+        return rides.map(rideMapper::toDto);
+    }
+
     /**
      * Get user's active ride (as rider)
      */

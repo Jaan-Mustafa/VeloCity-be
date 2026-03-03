@@ -145,6 +145,20 @@ public class RideController {
     }
 
     /**
+     * Get driver's ride history
+     * GET /api/rides/driver/history
+     */
+    @GetMapping("/driver/history")
+    public ResponseEntity<ApiResponse<Page<RideResponseDto>>> getDriverRideHistory(
+            @RequestHeader("X-User-Id") Long driverId,
+            @PageableDefault(size = 20, sort = "requestedAt", direction = Sort.Direction.DESC) Pageable pageable) {
+
+        log.info("Fetching ride history for driver {}", driverId);
+        Page<RideResponseDto> rides = rideService.getDriverRideHistory(driverId, pageable);
+        return ResponseEntity.ok(ApiResponse.success(rides));
+    }
+
+    /**
      * Cancel a ride
      * POST /api/rides/{id}/cancel
      */
