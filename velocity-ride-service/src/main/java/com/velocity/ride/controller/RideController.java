@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 import com.velocity.core.dto.ApiResponse;
 import com.velocity.core.enums.VehicleType;
 import com.velocity.ride.model.dto.FareEstimateDto;
@@ -128,6 +130,21 @@ public class RideController {
     }
 
     /**
+     * Get pending ride requests for a driver
+     * Returns REQUESTED rides that match the driver's vehicle type
+     * GET /api/rides/driver/pending
+     */
+    @GetMapping("/driver/pending")
+    public ResponseEntity<ApiResponse<List<RideResponseDto>>> getPendingRidesForDriver(
+            @RequestHeader("X-User-Id") Long driverId) {
+
+        log.info("Fetching pending rides for driver {}", driverId);
+        List<RideResponseDto> rides = rideService.getPendingRidesForDriver(driverId);
+        return ResponseEntity.ok(ApiResponse.success(rides,
+                String.format("Found %d pending rides", rides.size())));
+    }
+
+    /**
      * Cancel a ride
      * POST /api/rides/{id}/cancel
      */
@@ -207,5 +224,19 @@ public class RideController {
         log.info("Fetching status for ride {}", id);
         RideStatusDto status = rideService.getRideStatus(id);
         return ResponseEntity.ok(ApiResponse.success(status));
+    }
+
+    /**
+     * Process payment for a completed ride
+     * POST /api/rides/{id}/pay
+     */
+    @PostMapping("/{id}/pay")
+    public ResponseEntity<ApiResponse<RideResponseDto>> payForRide(
+            @PathVariable Long id,
+            @RequestHeader("X-User-Id") Long userId) {
+
+        log.info("User {} paying for ride {}", userId, id);
+        RideResponseDto ride = rideService.processPayment(id, userId);
+        return ResponseEntity.ok(ApiResponse.success(ride, "Payment processed successfully"));
     }
 }

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import com.velocity.core.enums.PaymentStatus;
 import com.velocity.core.enums.RideStatus;
 import com.velocity.core.enums.VehicleType;
 import com.velocity.core.exception.BusinessException;
@@ -46,6 +47,7 @@ public class RideService {
     private final RideNotificationService notificationService;
     
     private static final String DRIVER_SERVICE_URL = "http://localhost:8082/api/drivers";
+    private static final String PAYMENT_SERVICE_URL = "http://localhost:8084/api/wallets";
     
     /**
      * Request a new ride
@@ -210,6 +212,57 @@ public class RideService {
     }
 
     /**
+     * Get pending ride requests for a driver based on their vehicle type.
+     * Returns rides with status REQUESTED that match the driver's vehicle type.
+     */
+    public List<RideResponseDto> getPendingRidesForDriver(Long driverId) {
+        log.info("Fetching pending rides for driver {}", driverId);
+
+        // Get driver's vehicle type from driver service
+        VehicleType vehicleType = getDriverVehicleType(driverId);
+
+        if (vehicleType == null) {
+            log.warn("Could not determine vehicle type for driver {}", driverId);
+            return List.of();
+        }
+
+        // Find REQUESTED rides matching driver's vehicle type
+        List<Ride> pendingRides = rideRepository.findByVehicleTypeAndStatusOrderByRequestedAtAsc(
+                vehicleType, RideStatus.REQUESTED);
+
+        log.info("Found {} pending rides for driver {} with vehicle type {}",
+                pendingRides.size(), driverId, vehicleType);
+
+        return pendingRides.stream()
+                .map(rideMapper::toDto)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    /**
+     * Get driver's vehicle type from driver service
+     */
+    private VehicleType getDriverVehicleType(Long driverId) {
+        try {
+            String url = DRIVER_SERVICE_URL + "/" + driverId;
+            @SuppressWarnings("unchecked")
+            java.util.Map<String, Object> response = restTemplate.getForObject(url, java.util.Map.class);
+
+            if (response != null && response.get("data") != null) {
+                @SuppressWarnings("unchecked")
+                java.util.Map<String, Object> data = (java.util.Map<String, Object>) response.get("data");
+                String vehicleTypeStr = data.get("vehicleType") != null ? data.get("vehicleType").toString() : null;
+                if (vehicleTypeStr != null) {
+                    return VehicleType.valueOf(vehicleTypeStr);
+                }
+            }
+            return null;
+        } catch (Exception e) {
+            log.error("Failed to fetch driver vehicle type: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Cancel ride
      */
     @Transactional
@@ -365,16 +418,131 @@ public class RideService {
         // Update status to COMPLETED
         ride.setStatus(RideStatus.COMPLETED);
         ride.setCompletedAt(LocalDateTime.now());
-        
+
+        // Set payment status to PENDING - rider needs to pay
+        ride.setPaymentStatus(PaymentStatus.PENDING);
+
         ride = rideRepository.save(ride);
-        log.info("Ride {} completed by driver {}", rideId, driverId);
-        
+        log.info("Ride {} completed by driver {}, awaiting payment", rideId, driverId);
+
         // Send notification to user
         notificationService.notifyRideStatusChange(ride, RideStatus.COMPLETED);
-        
-        // TODO: Process payment via payment service
-        
+
         return rideMapper.toDto(ride);
+    }
+
+    /**
+     * Process payment for a completed ride.
+     * Deducts fare from rider wallet and credits to driver wallet.
+     */
+    @Transactional
+    public RideResponseDto processPayment(Long rideId, Long userId) {
+        Ride ride = rideRepository.findById(rideId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ride not found"));
+
+        // Verify rider ownership
+        if (!ride.getUserId().equals(userId)) {
+            throw new BusinessException("You can only pay for your own rides");
+        }
+
+        // Verify ride is completed
+        if (ride.getStatus() != RideStatus.COMPLETED) {
+            throw new BusinessException("Can only process payment for completed rides");
+        }
+
+        // Verify payment is pending
+        if (ride.getPaymentStatus() != PaymentStatus.PENDING) {
+            throw new BusinessException("Payment has already been processed for this ride");
+        }
+
+        try {
+            // Deduct from rider wallet
+            deductFromRiderWallet(ride.getUserId(), ride.getFare(), ride.getId());
+
+            // Credit to driver wallet
+            creditToDriverWallet(ride.getDriverId(), ride.getFare(), ride.getId());
+
+            // Update payment status
+            ride.setPaymentStatus(PaymentStatus.PAID);
+            ride.setPaidAt(LocalDateTime.now());
+
+            ride = rideRepository.save(ride);
+            log.info("Payment processed successfully for ride {}. Amount: {}", rideId, ride.getFare());
+
+            return rideMapper.toDto(ride);
+
+        } catch (Exception e) {
+            log.error("Payment failed for ride {}: {}", rideId, e.getMessage(), e);
+            ride.setPaymentStatus(PaymentStatus.FAILED);
+            rideRepository.save(ride);
+            throw new BusinessException("Payment failed: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Deduct fare from rider's wallet
+     */
+    private void deductFromRiderWallet(Long userId, java.math.BigDecimal amount, Long rideId) {
+        String url = PAYMENT_SERVICE_URL + "/deduct";
+
+        java.util.Map<String, Object> request = new java.util.HashMap<>();
+        request.put("userId", userId);
+        request.put("amount", amount);
+        request.put("rideId", rideId);
+        request.put("description", "Ride payment for ride #" + rideId);
+
+        try {
+            restTemplate.postForObject(url, request, java.util.Map.class);
+            log.info("Deducted {} from rider {} wallet for ride {}", amount, userId, rideId);
+        } catch (Exception e) {
+            log.error("Failed to deduct from rider wallet: {}", e.getMessage());
+            throw new BusinessException("Failed to process payment from wallet: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Credit fare to driver's wallet
+     */
+    private void creditToDriverWallet(Long driverId, java.math.BigDecimal amount, Long rideId) {
+        // First get the user ID for the driver
+        Long driverUserId = getDriverUserId(driverId);
+
+        String url = PAYMENT_SERVICE_URL + "/credit";
+
+        java.util.Map<String, Object> request = new java.util.HashMap<>();
+        request.put("userId", driverUserId);
+        request.put("amount", amount);
+        request.put("rideId", rideId);
+        request.put("description", "Earnings from ride #" + rideId);
+
+        try {
+            restTemplate.postForObject(url, request, java.util.Map.class);
+            log.info("Credited {} to driver {} (userId: {}) wallet for ride {}", amount, driverId, driverUserId, rideId);
+        } catch (Exception e) {
+            log.error("Failed to credit driver wallet: {}", e.getMessage());
+            throw new BusinessException("Failed to credit driver earnings: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Get the user ID for a driver
+     */
+    private Long getDriverUserId(Long driverId) {
+        try {
+            String url = DRIVER_SERVICE_URL + "/" + driverId;
+            @SuppressWarnings("unchecked")
+            java.util.Map<String, Object> response = restTemplate.getForObject(url, java.util.Map.class);
+
+            if (response != null && response.get("data") != null) {
+                @SuppressWarnings("unchecked")
+                java.util.Map<String, Object> data = (java.util.Map<String, Object>) response.get("data");
+                return Long.valueOf(data.get("userId").toString());
+            }
+            throw new BusinessException("Could not find driver with ID: " + driverId);
+        } catch (Exception e) {
+            log.error("Failed to fetch driver info: {}", e.getMessage());
+            throw new BusinessException("Failed to find driver: " + e.getMessage());
+        }
     }
     
     /**

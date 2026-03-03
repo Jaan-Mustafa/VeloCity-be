@@ -3,6 +3,7 @@ package com.velocity.ride.model.dto;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+import com.velocity.core.enums.PaymentStatus;
 import com.velocity.core.enums.RideStatus;
 import com.velocity.core.enums.VehicleType;
 
@@ -42,7 +43,11 @@ public class RideResponseDto {
     private BigDecimal fare;
     private BigDecimal distanceKm;
     private Integer durationMinutes;
-    
+
+    // Payment tracking
+    private PaymentStatus paymentStatus;
+    private LocalDateTime paidAt;
+
     // Driver info (when assigned)
     private DriverInfoDto driver;
     

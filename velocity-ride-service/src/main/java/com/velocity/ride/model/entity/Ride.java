@@ -1,5 +1,6 @@
 package com.velocity.ride.model.entity;
 
+import com.velocity.core.enums.PaymentStatus;
 import com.velocity.core.enums.RideStatus;
 import com.velocity.core.enums.VehicleType;
 import jakarta.persistence.*;
@@ -73,12 +74,20 @@ public class Ride {
     // Pricing and metrics
     @Column(precision = 10, scale = 2)
     private BigDecimal fare;
-    
+
     @Column(name = "distance_km", precision = 10, scale = 2)
     private BigDecimal distanceKm;
-    
+
     @Column(name = "duration_minutes")
     private Integer durationMinutes;
+
+    // Payment tracking
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_status", length = 20)
+    private PaymentStatus paymentStatus;
+
+    @Column(name = "paid_at")
+    private LocalDateTime paidAt;
     
     // Cancellation
     @Column(name = "cancelled_by", length = 20)

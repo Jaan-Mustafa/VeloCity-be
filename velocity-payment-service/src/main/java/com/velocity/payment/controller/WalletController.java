@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.velocity.core.dto.ApiResponse;
 import com.velocity.payment.model.dto.AddMoneyRequest;
+import com.velocity.payment.model.dto.CreditMoneyRequest;
 import com.velocity.payment.model.dto.DeductMoneyRequest;
 import com.velocity.payment.model.dto.PaymentResponse;
 import com.velocity.payment.model.dto.RefundRequest;
@@ -114,17 +115,32 @@ public class WalletController {
     }
     
     /**
+     * Credit money to wallet (internal API for services - driver earnings)
+     */
+    @PostMapping("/credit")
+    @Operation(summary = "Credit money", description = "Credit money to wallet (internal use for driver earnings)")
+    public ResponseEntity<ApiResponse<PaymentResponse>> creditMoney(
+            @Valid @RequestBody CreditMoneyRequest request) {
+        log.info("Request to credit money to wallet for user: {}, amount: {}",
+                request.getUserId(), request.getAmount());
+
+        PaymentResponse response = walletService.creditMoney(request);
+
+        return ResponseEntity.ok(ApiResponse.success(response, "Earnings credited successfully"));
+    }
+
+    /**
      * Refund money to wallet
      */
     @PostMapping("/refund")
     @Operation(summary = "Refund money", description = "Refund money to wallet")
     public ResponseEntity<ApiResponse<PaymentResponse>> refundMoney(
             @Valid @RequestBody RefundRequest request) {
-        log.info("Request to refund money to wallet for user: {}, amount: {}", 
+        log.info("Request to refund money to wallet for user: {}, amount: {}",
                 request.getUserId(), request.getAmount());
-        
+
         PaymentResponse response = walletService.refundMoney(request);
-        
+
         return ResponseEntity.ok(ApiResponse.success(response, "Refund processed successfully"));
     }
     

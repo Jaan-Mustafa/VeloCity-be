@@ -143,4 +143,19 @@ public interface RideRepository extends JpaRepository<Ride, Long> {
      * @return Page of rides
      */
     Page<Ride> findByUserIdOrderByRequestedAtDesc(Long userId, Pageable pageable);
+
+    /**
+     * Find pending (REQUESTED) rides by vehicle type that haven't been accepted yet
+     * @param vehicleType Vehicle type to filter
+     * @param status Ride status (REQUESTED)
+     * @return List of pending rides
+     */
+    List<Ride> findByVehicleTypeAndStatusOrderByRequestedAtAsc(VehicleType vehicleType, RideStatus status);
+
+    /**
+     * Find all pending (REQUESTED) rides that haven't been accepted yet
+     * @param status Ride status (REQUESTED)
+     * @return List of pending rides
+     */
+    List<Ride> findByStatusOrderByRequestedAtAsc(RideStatus status);
 }

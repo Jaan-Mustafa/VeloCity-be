@@ -88,8 +88,6 @@ public class DriverService {
      * Get driver profile by user ID
      */
     public DriverDto getDriverProfileByUserId(Long userId) {
-        log.info("Fetching driver profile for userId: {}", userId);
-        
         Driver driver = driverRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Driver not found for this user"));
         

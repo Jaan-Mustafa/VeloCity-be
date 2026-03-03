@@ -14,6 +14,7 @@ import com.velocity.core.exception.InsufficientBalanceException;
 import com.velocity.core.exception.ResourceNotFoundException;
 import com.velocity.payment.mapper.WalletMapper;
 import com.velocity.payment.model.dto.AddMoneyRequest;
+import com.velocity.payment.model.dto.CreditMoneyRequest;
 import com.velocity.payment.model.dto.DeductMoneyRequest;
 import com.velocity.payment.model.dto.PaymentResponse;
 import com.velocity.payment.model.dto.RefundRequest;
@@ -188,6 +189,64 @@ public class WalletService {
                 .build();
     }
     
+    /**
+     * Credit money to wallet (for driver earnings from rides)
+     * Auto-creates wallet if it doesn't exist for the user.
+     */
+    @Transactional
+    public PaymentResponse creditMoney(CreditMoneyRequest request) {
+        log.info("Crediting money to wallet for user: {}, amount: {}, ride: {}",
+                request.getUserId(), request.getAmount(), request.getRideId());
+
+        // Get or create wallet for the user (drivers may not have wallets yet)
+        Wallet wallet = walletRepository.findByUserId(request.getUserId())
+                .orElseGet(() -> {
+                    log.info("Wallet not found for user: {}, creating new wallet", request.getUserId());
+                    Wallet newWallet = new Wallet();
+                    newWallet.setUserId(request.getUserId());
+                    newWallet.setBalance(BigDecimal.ZERO);
+                    newWallet.setIsActive(true);
+                    return walletRepository.save(newWallet);
+                });
+
+        if (!wallet.getIsActive()) {
+            throw new IllegalStateException("Wallet is not active");
+        }
+
+        BigDecimal balanceBefore = wallet.getBalance();
+        wallet.credit(request.getAmount());
+        walletRepository.save(wallet);
+
+        // Create transaction record
+        Map<String, Object> metadata = new HashMap<>();
+        if (request.getRideId() != null) {
+            metadata.put("rideId", request.getRideId());
+        }
+
+        Transaction transaction = new Transaction();
+        transaction.setWalletId(wallet.getId());
+        transaction.setRideId(request.getRideId());
+        transaction.setType(TransactionType.CREDIT);
+        transaction.setAmount(request.getAmount());
+        transaction.setBalanceBefore(balanceBefore);
+        transaction.setBalanceAfter(wallet.getBalance());
+        transaction.setDescription(request.getDescription() != null ? request.getDescription() : "Ride earnings");
+        transaction.setStatus("COMPLETED");
+        transaction.setMetadata(metadata);
+
+        Transaction savedTransaction = transactionRepository.save(transaction);
+
+        log.info("Money credited successfully. Transaction ID: {}, New balance: {}",
+                savedTransaction.getId(), wallet.getBalance());
+
+        return PaymentResponse.builder()
+                .success(true)
+                .message("Earnings credited successfully")
+                .transactionId(savedTransaction.getId())
+                .newBalance(wallet.getBalance())
+                .build();
+    }
+
     /**
      * Refund money to wallet (for ride cancellation)
      */
